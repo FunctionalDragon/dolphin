@@ -111,6 +111,8 @@ static std::thread s_cpu_thread;
 static bool s_request_refresh_info = false;
 static int s_pause_and_lock_depth = 0;
 static bool s_is_throttler_temp_disabled = false;
+static bool s_rush_mode = false;
+static int s_rush_number = 10000;
 
 struct HostJob
 {
@@ -133,12 +135,17 @@ static void InitIsCPUKey()
 
 bool GetIsThrottlerTempDisabled()
 {
-  return s_is_throttler_temp_disabled;
+  return (s_is_throttler_temp_disabled || s_rush_mode);
 }
 
 void SetIsThrottlerTempDisabled(bool disable)
 {
   s_is_throttler_temp_disabled = disable;
+}
+
+void SetRushMode(bool mode)
+{
+	s_rush_mode = mode;
 }
 
 std::string GetStateFileName()
@@ -875,6 +882,10 @@ void Callback_VideoCopiedToXFB(bool video_update)
     s_drawn_frame++;
 
   Movie::FrameUpdate();
+  if ((s_rush_mode) && (((int) Movie::g_currentFrame) % s_rush_number == 0))
+  {
+	  State::Save(((int) Movie::g_currentFrame) / s_rush_number, true);
+  }
 }
 
 void UpdateTitle()

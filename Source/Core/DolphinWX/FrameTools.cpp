@@ -196,6 +196,8 @@ wxMenuBar* CFrame::CreateMenu()
   movieMenu->Append(IDM_RECORD_READ_ONLY, GetMenuLabel(HK_READ_ONLY_MODE), wxEmptyString,
                     wxITEM_CHECK);
   movieMenu->Append(IDM_TAS_INPUT, _("TAS Input"));
+  movieMenu->Append(IDM_CUSTOM_INPUT, _("Custom Input"), wxEmptyString, wxITEM_CHECK);
+  movieMenu->Append(IDM_RUSH_MODE, _("Rush Mode"), wxEmptyString, wxITEM_CHECK);
   movieMenu->AppendSeparator();
   movieMenu->AppendCheckItem(IDM_TOGGLE_PAUSE_MOVIE, _("Pause at End of Movie"));
   movieMenu->Check(IDM_TOGGLE_PAUSE_MOVIE, SConfig::GetInstance().m_PauseMovie);
@@ -724,6 +726,15 @@ void CFrame::OnTASInput(wxCommandEvent& event)
   }
 }
 
+void CFrame::OnCustomInput(wxCommandEvent& event)
+{
+	Movie::SetCustomInput(event.IsChecked());
+}
+
+void CFrame::OnRushMode(wxCommandEvent& event)
+{
+	Core::SetRushMode(event.IsChecked());
+}
 void CFrame::OnTogglePauseMovie(wxCommandEvent& WXUNUSED(event))
 {
   SConfig::GetInstance().m_PauseMovie = !SConfig::GetInstance().m_PauseMovie;
@@ -1173,14 +1184,14 @@ void CFrame::DoStop()
       Host_NotifyMapLoaded();
     }
 
+	if (NetPlayDialog::GetNetPlayClient())
+		NetPlayDialog::GetNetPlayClient()->Stop();
+
     // TODO: Show the author/description dialog here
     if (Movie::IsRecordingInput())
       DoRecordingSave();
     if (Movie::IsMovieActive())
       Movie::EndPlayInput(false);
-
-    if (NetPlayDialog::GetNetPlayClient())
-      NetPlayDialog::GetNetPlayClient()->Stop();
 
     BootManager::Stop();
     UpdateGUI();

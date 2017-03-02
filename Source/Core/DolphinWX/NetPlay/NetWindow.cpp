@@ -14,6 +14,7 @@
 #include <wx/clipbrd.h>
 #include <wx/colour.h>
 #include <wx/dialog.h>
+#include <wx/filedlg.h>
 #include <wx/frame.h>
 #include <wx/listbox.h>
 #include <wx/msgdlg.h>
@@ -36,6 +37,7 @@
 #include "Core/NetPlayClient.h"
 #include "Core/NetPlayProto.h"
 #include "Core/NetPlayServer.h"
+#include "Core/Movie.h"
 
 #include "DiscIO/Enums.h"
 
@@ -100,9 +102,9 @@ void NetPlayDialog::FillWithGameNames(wxListBox* game_lbox, const CGameListCtrl&
 
 NetPlayDialog::NetPlayDialog(wxWindow* const parent, const CGameListCtrl* const game_list,
                              const std::string& game, const bool is_hosting)
-    : wxFrame(parent, wxID_ANY, _("Dolphin NetPlay")), m_selected_game(game), m_start_btn(nullptr),
+    : wxFrame(parent, wxID_ANY, _("Dolphin NetPlay")), m_selected_game(game), m_start_btn(nullptr), m_stream_btn(nullptr),
       m_host_label(nullptr), m_host_type_choice(nullptr), m_host_copy_btn(nullptr),
-      m_host_copy_btn_is_retry(false), m_is_hosting(is_hosting), m_game_list(game_list)
+      m_host_copy_btn_is_retry(false), m_is_hosting(is_hosting), m_game_list(game_list), m_is_streaming(false)
 {
   Bind(wxEVT_THREAD, &NetPlayDialog::OnThread, this);
 
@@ -215,13 +217,17 @@ NetPlayDialog::NetPlayDialog(wxWindow* const parent, const CGameListCtrl* const 
     m_start_btn->Bind(wxEVT_BUTTON, &NetPlayDialog::OnStart, this);
     bottom_szr->Add(m_start_btn);
 
+	m_stream_btn = new wxButton(panel, wxID_ANY, _("Stream movie"));
+	m_stream_btn->Bind(wxEVT_BUTTON, &NetPlayDialog::OnStream, this);
+	bottom_szr->Add(m_stream_btn);
+
     bottom_szr->Add(new wxStaticText(panel, wxID_ANY, _("Buffer:")), 0, wxLEFT | wxCENTER, 5);
-    wxSpinCtrl* const padbuf_spin =
+    m_padbuf_spin =
         new wxSpinCtrl(panel, wxID_ANY, std::to_string(INITIAL_PAD_BUFFER_SIZE), wxDefaultPosition,
                        wxSize(64, -1), wxSP_ARROW_KEYS, 0, 200, INITIAL_PAD_BUFFER_SIZE);
-    padbuf_spin->Bind(wxEVT_SPINCTRL, &NetPlayDialog::OnAdjustBuffer, this);
+    m_padbuf_spin->Bind(wxEVT_SPINCTRL, &NetPlayDialog::OnAdjustBuffer, this);
     bottom_szr->AddSpacer(3);
-    bottom_szr->Add(padbuf_spin, 0, wxCENTER);
+    bottom_szr->Add(m_padbuf_spin, 0, wxCENTER);
     bottom_szr->AddSpacer(5);
     m_memcard_write = new wxCheckBox(panel, wxID_ANY, _("Write to memcards/SD"));
     bottom_szr->Add(m_memcard_write, 0, wxCENTER);
@@ -309,6 +315,67 @@ std::string NetPlayDialog::FindCurrentGame()
   return FindGame(m_selected_game);
 }
 
+void NetPlayDialog::OnStream(wxCommandEvent&)
+{
+	bool should_start = true;
+	if (!netplay_client->DoAllPlayersHaveGame())
+	{
+		should_start = wxMessageBox(_("Not all players have the game. Do you really want to start?"),
+			_("Warning"), wxYES_NO) == wxYES;
+	}
+
+	if (!should_start)
+		return;
+
+	NetSettings settings;
+	GetNetSettings(settings);
+	wxString path =
+		wxFileSelector(_("Select The Recording File"), wxEmptyString, wxEmptyString, wxEmptyString,
+			_("Dolphin TAS Movies (*.dtm)") +
+			wxString::Format("|*.dtm|%s", wxGetTranslation(wxALL_FILES)),
+			wxFD_OPEN | wxFD_PREVIEW | wxFD_FILE_MUST_EXIST, main_frame);
+
+	if (!path.IsEmpty())
+	{
+
+		if (!Movie::IsReadOnly())
+		{
+			// let's make the read-only flag consistent at the start of a movie.
+			Movie::SetReadOnly(true);
+			// main_frame->GetMenuBar()->FindItem(IDM_RECORD_READ_ONLY)->Check();
+		}
+		if (Movie::PlayInput(WxStrToStr(path)))
+		{
+			//  settings that are synced over netplay but are not saved in movie header
+			//
+			//  settings.m_CPUthread = 
+			//  settings.m_EnableCheats = 
+			//  settings.m_OverrideGCLanguage =
+			//  settings.m_DSPEnableJIT = 
+			//  settings.m_WriteToMemcard = 
+			//  settings.m_OCEnable = 
+			//  settings.m_OCFactor = 
+			settings.m_CPUcore = Movie::GetCPUMode();
+			settings.m_SelectedLanguage = Movie::GetLanguage();
+			settings.m_ProgressiveScan = Movie::IsProgressive();
+			settings.m_PAL60 = Movie::IsPAL60();
+			settings.m_DSPHLE = Movie::IsDSPHLE();
+			if (Movie::IsUsingMemcard(0))
+				settings.m_EXIDevice[0] = EXIDEVICE_MEMORYCARD;
+			else settings.m_EXIDevice[0] = EXIDEVICE_NONE;
+			if (Movie::IsUsingMemcard(1))
+				settings.m_EXIDevice[1] = EXIDEVICE_MEMORYCARD;
+			else settings.m_EXIDevice[1] = EXIDEVICE_NONE;
+			m_is_streaming = true;
+			netplay_server->AdjustPadBufferSize(0);
+			netplay_server->SetNetSettings(settings);
+			netplay_server->StartGame();
+
+		}
+	}
+	
+}
+
 void NetPlayDialog::OnStart(wxCommandEvent&)
 {
   bool should_start = true;
@@ -368,6 +435,9 @@ void NetPlayDialog::OnMsgStartGame()
     m_memcard_write->Disable();
     m_game_btn->Disable();
     m_player_config_btn->Disable();
+	m_stream_btn->Disable();
+	if (m_is_streaming)
+		m_padbuf_spin->Disable();
   }
 
   m_record_chkbox->Disable();
@@ -383,6 +453,9 @@ void NetPlayDialog::OnMsgStopGame()
     m_memcard_write->Enable();
     m_game_btn->Enable();
     m_player_config_btn->Enable();
+	m_stream_btn->Enable();
+	m_padbuf_spin->Enable();
+	m_is_streaming = false;
   }
   m_record_chkbox->Enable();
 }

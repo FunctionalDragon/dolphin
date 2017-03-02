@@ -72,6 +72,7 @@ public:
   Common::FifoQueue<std::string> chat_msgs;
 
   void OnStart(wxCommandEvent& event);
+  void OnStream(wxCommandEvent& event);
 
   // implementation of NetPlayUI methods
   void BootGame(const std::string& filename) override;
@@ -129,6 +130,8 @@ private:
   wxButton* m_player_config_btn;
   wxButton* m_game_btn;
   wxButton* m_start_btn;
+  wxButton* m_stream_btn;
+  wxSpinCtrl* m_padbuf_spin;
   wxButton* m_kick_btn;
   wxStaticText* m_host_label;
   wxChoice* m_host_type_choice;
@@ -137,6 +140,7 @@ private:
   MD5Dialog* m_MD5_dialog = nullptr;
   bool m_host_copy_btn_is_retry;
   bool m_is_hosting;
+  bool m_is_streaming;
   u32 m_pad_buffer;
   u32 m_desync_frame;
   std::string m_desync_player;

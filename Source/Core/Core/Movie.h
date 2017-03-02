@@ -187,6 +187,7 @@ typedef void (*WiiManipFunction)(u8*, WiimoteEmu::ReportFeatures, int, int, wiim
 
 void SetGCInputManip(GCManipFunction);
 void SetWiiInputManip(WiiManipFunction);
+void SetCustomInput(bool isCustomInput);
 void CallGCInputManip(GCPadStatus* PadStatus, int controllerID);
 void CallWiiInputManip(u8* core, WiimoteEmu::ReportFeatures rptf, int controllerID, int ext,
                        const wiimote_key key);

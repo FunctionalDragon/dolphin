@@ -461,6 +461,7 @@ public:
         { m_overflow = allow ? Overflow : SingleCell; }
     void SetReadOnly(bool isReadOnly = true)
         { m_isReadOnly = isReadOnly ? ReadOnly : ReadWrite; }
+	
 
     // takes ownership of the pointer
     void SetRenderer(wxGridCellRenderer *renderer)

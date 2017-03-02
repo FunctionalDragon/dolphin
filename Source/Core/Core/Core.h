@@ -25,7 +25,7 @@ extern bool g_want_determinism;
 
 bool GetIsThrottlerTempDisabled();
 void SetIsThrottlerTempDisabled(bool disable);
-
+void SetRushMode(bool mode);
 void Callback_VideoCopiedToXFB(bool video_update);
 
 enum EState

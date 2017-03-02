@@ -14,6 +14,7 @@
 #include "Core/ConfigManager.h"
 #include "Core/HW/EXI_DeviceIPL.h"
 #include "Core/HW/Sram.h"
+#include "Core/Movie.h"
 #include "Core/NetPlayClient.h"  //for NetPlayUI
 #include "InputCommon/GCPadStatus.h"
 #if !defined(_WIN32)
@@ -260,7 +261,7 @@ unsigned int NetPlayServer::OnConnect(ENetPeer* socket)
   player.socket = socket;
   rpac >> player.revision;
   rpac >> player.name;
-
+  NOTICE_LOG(NETPLAY, "player %s connected", player.name);
   enet_packet_destroy(epack);
   // try to automatically assign new user a pad
   for (PadMapping& mapping : m_pad_map)
@@ -786,7 +787,9 @@ bool NetPlayServer::StartGame()
   // no change, just update with clients
   AdjustPadBufferSize(m_target_buffer_size);
 
-  if (SConfig::GetInstance().bEnableCustomRTC)
+  if (Movie::IsPlayingInput()) 
+	g_netplay_initial_gctime = Movie::GetRecordingStartTime();
+  else if (SConfig::GetInstance().bEnableCustomRTC)
     g_netplay_initial_gctime = SConfig::GetInstance().m_customRTCValue;
   else
     g_netplay_initial_gctime = Common::Timer::GetLocalTimeSinceJan1970();
@@ -811,9 +814,8 @@ bool NetPlayServer::StartGame()
   *spac << m_settings.m_EXIDevice[1];
   *spac << (u32)g_netplay_initial_gctime;
   *spac << (u32)(g_netplay_initial_gctime >> 32);
-
   SendAsyncToClients(std::move(spac));
-
+  NOTICE_LOG(NETPLAY, "initial time : %d", g_netplay_initial_gctime);
   m_is_running = true;
 
   return true;

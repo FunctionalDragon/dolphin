@@ -251,6 +251,8 @@ EVT_MENU(IDM_PLAY_RECORD, CFrame::OnPlayRecording)
 EVT_MENU(IDM_RECORD_EXPORT, CFrame::OnRecordExport)
 EVT_MENU(IDM_RECORD_READ_ONLY, CFrame::OnRecordReadOnly)
 EVT_MENU(IDM_TAS_INPUT, CFrame::OnTASInput)
+EVT_MENU(IDM_CUSTOM_INPUT, CFrame::OnCustomInput)
+EVT_MENU(IDM_RUSH_MODE, CFrame::OnRushMode)
 EVT_MENU(IDM_TOGGLE_PAUSE_MOVIE, CFrame::OnTogglePauseMovie)
 EVT_MENU(IDM_SHOW_LAG, CFrame::OnShowLag)
 EVT_MENU(IDM_SHOW_FRAME_COUNT, CFrame::OnShowFrameCount)
@@ -1431,6 +1433,9 @@ void CFrame::ParseHotkeys()
     DoPause();
   // Frame advance
   HandleFrameSkipHotkeys();
+  // Log timestamp
+  if (IsHotkey(HK_LOG_TIMESTAMP))
+	  NOTICE_LOG(NETPLAY, "Timestamp on frame: %llu", (unsigned long long)Movie::g_currentFrame);
   // Stop
   if (IsHotkey(HK_STOP))
     DoStop();

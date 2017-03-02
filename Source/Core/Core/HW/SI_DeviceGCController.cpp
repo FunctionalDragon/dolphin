@@ -114,27 +114,26 @@ int CSIDevice_GCController::RunBuffer(u8* _pBuffer, int _iLength)
   return _iLength;
 }
 
-void CSIDevice_GCController::HandleMoviePadStatus(GCPadStatus* PadStatus)
+void CSIDevice_GCController::HandleMoviePadStatus(GCPadStatus* PadStatus) // if not in netplay, we already have the pad status polled
 {
-  Movie::CallGCInputManip(PadStatus, ISIDevice::m_iDeviceNumber);
-
+  Movie::CallGCInputManip(PadStatus, ISIDevice::m_iDeviceNumber);	// overwrites input with TAS input
   Movie::SetPolledDevice();
-  if (NetPlay_GetInput(ISIDevice::m_iDeviceNumber, PadStatus))
+  if (NetPlay_GetInput(ISIDevice::m_iDeviceNumber, PadStatus))		// overwrites input from netplay ; polls everyone when P1 is polled then send relevant inputs, manages buffer, receives inputs, and records input if necessary
   {
   }
   else if (Movie::IsPlayingInput())
   {
-    Movie::PlayController(PadStatus, ISIDevice::m_iDeviceNumber);
+    Movie::PlayController(PadStatus, ISIDevice::m_iDeviceNumber);	// overwrites input from movie
     Movie::InputUpdate();
   }
   else if (Movie::IsRecordingInput())
   {
-    Movie::RecordInput(PadStatus, ISIDevice::m_iDeviceNumber);
+    Movie::RecordInput(PadStatus, ISIDevice::m_iDeviceNumber);    // records input
     Movie::InputUpdate();
   }
   else
   {
-    Movie::CheckPadStatus(PadStatus, ISIDevice::m_iDeviceNumber);
+    Movie::CheckPadStatus(PadStatus, ISIDevice::m_iDeviceNumber);  // display input string
   }
 }
 

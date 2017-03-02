@@ -88,6 +88,7 @@ static u8 s_language = static_cast<u8>(DiscIO::Language::LANGUAGE_UNKNOWN);
 
 static bool s_bRecordingFromSaveState = false;
 static bool s_bPolled = false;
+static bool s_bUseCustomInput = false;
 
 // s_InputDisplay is used by both CPU and GPU (is mutable).
 static std::mutex s_input_display_lock;
@@ -367,7 +368,8 @@ bool IsPlayingInput()
 
 bool IsMovieActive()
 {
-  return s_playMode != MODE_NONE;
+  return (s_playMode != MODE_NONE);
+  // return (s_playMode != MODE_NONE && !(NetPlay::IsNetPlayRunning() && s_playMode == MODE_PLAYING));
 }
 
 bool IsReadOnly()
@@ -584,7 +586,8 @@ bool BeginRecordingInput(int controllers)
 
   s_currentByte = s_totalBytes = 0;
 
-  Core::UpdateWantDeterminism();
+  // if (!s_bNetPlay) 
+	  Core::UpdateWantDeterminism();
 
   Core::PauseAndLock(false, was_unpaused);
 
@@ -1178,7 +1181,9 @@ void PlayController(GCPadStatus* PadStatus, int controllerID)
 
   // dtm files don't save the mic button or error bit. not sure if they're actually used, but better
   // safe than sorry
-  signed char e = PadStatus->err;
+  if (!(s_bUseCustomInput) || SConfig::GetInstance().m_SIDevice[controllerID] == SIDEVICE_NONE) // change this to allow custom input from whichever port is plugged in ?
+  {
+	  signed char e = PadStatus->err;
   memset(PadStatus, 0, sizeof(GCPadStatus));
   PadStatus->err = e;
 
@@ -1228,6 +1233,11 @@ void PlayController(GCPadStatus* PadStatus, int controllerID)
     PadStatus->button |= PAD_TRIGGER_L;
   if (s_padState.R)
     PadStatus->button |= PAD_TRIGGER_R;
+  }
+  else
+  {
+	  s_currentByte += 8;
+  }
   if (s_padState.disc)
   {
     // This implementation assumes the disc change will only happen once. Trying
@@ -1412,7 +1422,10 @@ void SaveRecording(const std::string& filename)
   }
 
   if (success)
-    Core::DisplayMessage(StringFromFormat("DTM %s saved", filename.c_str()), 2000);
+  {
+	  Core::DisplayMessage(StringFromFormat("DTM %s saved", filename.c_str()), 2000);
+	  NOTICE_LOG(NETPLAY, "Saved replay at %s", filename.c_str());
+  }
   else
     Core::DisplayMessage(StringFromFormat("Failed to save %s", filename.c_str()), 2000);
 }
@@ -1424,6 +1437,11 @@ void SetGCInputManip(GCManipFunction func)
 void SetWiiInputManip(WiiManipFunction func)
 {
   wiimfunc = func;
+}
+
+void SetCustomInput(bool isCustomInput)
+{
+	s_bUseCustomInput = isCustomInput;
 }
 
 // NOTE: CPU Thread

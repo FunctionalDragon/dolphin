@@ -17,6 +17,7 @@
 #include "Core/ConfigManager.h"
 #include "Core/CoreTiming.h"
 #include "Core/HW/Memmap.h"
+#include "Core/Movie.h"
 #include "Core/NetPlayProto.h"
 
 #include "VideoCommon/AsyncRequests.h"
@@ -488,7 +489,7 @@ void UpdateWantDeterminism(bool want)
     // to wanting determinism in general).  Once vertex arrays are
     // fixed, there should be no reason to want this off for movies by
     // default, so this can be removed.
-    if (!NetPlay::IsNetPlayRunning())
+    if (!(NetPlay::IsNetPlayRunning() || Movie::IsNetPlayRecording()))
       gpu_thread = false;
 
     break;

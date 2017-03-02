@@ -24,7 +24,6 @@
 #include "Core/HW/WiimoteReal/WiimoteReal.h"
 #include "Core/IPC_HLE/WII_IPC_HLE_Device_usb.h"
 #include "Core/Movie.h"
-#include "Core/Movie.h"
 #include "Core/NetPlayClient.h"
 #include "InputCommon/GCAdapter.h"
 #include "VideoCommon/OnScreenDisplay.h"
@@ -978,7 +977,12 @@ bool NetPlayClient::GetNetPads(const u8 pad_nb, GCPadStatus* pad_status)
         Pad::GetStatus(local_pad, pad_status);
         break;
       }
-
+	  
+	  if (Movie::IsPlayingInput()) // ugliest hack ever
+	  {
+		  Movie::PlayController(pad_status, local_pad);	// overwrites input from movie
+		  Movie::InputUpdate();
+	  }
       u8 ingame_pad = LocalPadToInGamePad(local_pad);
 
       // adjust the buffer either up or down
